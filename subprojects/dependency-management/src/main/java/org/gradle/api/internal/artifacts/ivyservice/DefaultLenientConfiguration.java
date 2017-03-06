@@ -351,6 +351,11 @@ public class DefaultLenientConfiguration implements LenientConfiguration, Visite
         }
 
         @Override
+        public boolean requiresDownloadedArtifactFiles() {
+            return true;
+        }
+
+        @Override
         public void visitFile(ComponentArtifactIdentifier artifactIdentifier, AttributeContainer variant, File file) {
             this.files.add(file);
         }
@@ -395,6 +400,11 @@ public class DefaultLenientConfiguration implements LenientConfiguration, Visite
 
         @Override
         public boolean includeFiles() {
+            return true;
+        }
+
+        @Override
+        public boolean requiresDownloadedArtifactFiles() {
             return true;
         }
 

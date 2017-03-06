@@ -116,6 +116,11 @@ public class DependencyResolvingClasspath extends AbstractFileCollection {
             }
 
             @Override
+            public boolean requiresDownloadedArtifactFiles() {
+                return true;
+            }
+
+            @Override
             public void visitFile(ComponentArtifactIdentifier artifactIdentifier, AttributeContainer variant, File file) {
                 result.add(file);
             }
