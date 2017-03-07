@@ -80,6 +80,7 @@ import org.gradle.internal.logging.LoggingManagerInternal;
 import org.gradle.internal.logging.StandardOutputCapture;
 import org.gradle.internal.metaobject.BeanDynamicObject;
 import org.gradle.internal.metaobject.DynamicObject;
+import org.gradle.internal.progress.BuildOperationExecutor;
 import org.gradle.internal.reflect.Instantiator;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.internal.service.scopes.ServiceRegistryFactory;
@@ -1184,7 +1185,13 @@ public class DefaultProject extends AbstractPluginAware implements ProjectIntern
 
     @Override
     protected DefaultObjectConfigurationAction createObjectConfigurationAction() {
-        return new DefaultObjectConfigurationAction(getFileResolver(), getScriptPluginFactory(), getScriptHandlerFactory(), getBaseClassLoaderScope(), this);
+        return new DefaultObjectConfigurationAction(
+            getFileResolver(),
+            getScriptPluginFactory(),
+            getScriptHandlerFactory(),
+            getBaseClassLoaderScope(),
+            getServices().get(BuildOperationExecutor.class),
+            this);
     }
 
     @Inject

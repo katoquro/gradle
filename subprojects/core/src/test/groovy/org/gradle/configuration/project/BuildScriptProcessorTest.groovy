@@ -21,16 +21,17 @@ import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.configuration.ScriptPlugin
 import org.gradle.configuration.ScriptPluginFactory
 import org.gradle.groovy.scripts.ScriptSource
+import org.gradle.internal.progress.TestBuildOperationExecutor
 import spock.lang.Specification
 
-public class BuildScriptProcessorTest extends Specification {
+class BuildScriptProcessorTest extends Specification {
     def project = Mock(ProjectInternal)
     def scriptSource = Mock(ScriptSource)
     def configurerFactory = Mock(ScriptPluginFactory)
     def scriptPlugin = Mock(ScriptPlugin)
     def targetScope = Mock(ClassLoaderScope)
     def baseScope = Mock(ClassLoaderScope)
-    def BuildScriptProcessor buildScriptProcessor = new BuildScriptProcessor(configurerFactory)
+    def BuildScriptProcessor buildScriptProcessor = new BuildScriptProcessor(configurerFactory, new TestBuildOperationExecutor())
     private ScriptHandler scriptHandler;
 
     def "setup"() {

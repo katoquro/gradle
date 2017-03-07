@@ -231,7 +231,7 @@ public class BuildScopeServices extends DefaultServiceRegistry {
     protected ProjectEvaluator createProjectEvaluator(BuildOperationExecutor buildOperationExecutor, CachingServiceLocator cachingServiceLocator, ScriptPluginFactory scriptPluginFactory) {
         ConfigureActionsProjectEvaluator withActionsEvaluator = new ConfigureActionsProjectEvaluator(
             PluginsProjectConfigureActions.from(cachingServiceLocator),
-            new BuildScriptProcessor(scriptPluginFactory),
+            new BuildScriptProcessor(scriptPluginFactory, buildOperationExecutor),
             new DelayedConfigurationActions()
         );
         return new LifecycleProjectEvaluator(buildOperationExecutor, withActionsEvaluator);
@@ -303,7 +303,8 @@ public class BuildScopeServices extends DefaultServiceRegistry {
             get(DocumentationRegistry.class),
             get(ModelRuleSourceDetector.class),
             get(PluginRepositoryRegistry.class),
-            get(PluginRepositoryFactory.class));
+            get(PluginRepositoryFactory.class),
+            get(BuildOperationExecutor.class));
     }
 
     protected SettingsLoaderFactory createSettingsLoaderFactory(SettingsProcessor settingsProcessor, NestedBuildFactory nestedBuildFactory,
@@ -333,7 +334,8 @@ public class BuildScopeServices extends DefaultServiceRegistry {
         return new InitScriptHandler(
             new DefaultInitScriptProcessor(
                 scriptPluginFactory,
-                scriptHandlerFactory
+                scriptHandlerFactory,
+                buildOperationExecutor
             ),
             buildOperationExecutor
         );
@@ -350,7 +352,8 @@ public class BuildScopeServices extends DefaultServiceRegistry {
                         instantiator,
                         serviceRegistryFactory
                     ),
-                    propertiesLoader
+                    propertiesLoader,
+                    buildOperationExecutor
                 ),
                 propertiesLoader
             ),

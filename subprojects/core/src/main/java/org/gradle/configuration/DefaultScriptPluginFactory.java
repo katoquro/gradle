@@ -44,6 +44,7 @@ import org.gradle.groovy.scripts.internal.SubsetScriptTransformer;
 import org.gradle.internal.Actions;
 import org.gradle.internal.Factory;
 import org.gradle.internal.logging.LoggingManagerInternal;
+import org.gradle.internal.progress.BuildOperationExecutor;
 import org.gradle.internal.reflect.Instantiator;
 import org.gradle.internal.service.DefaultServiceRegistry;
 import org.gradle.model.dsl.internal.transform.ClosureCreationInterceptingVerifier;
@@ -70,6 +71,7 @@ public class DefaultScriptPluginFactory implements ScriptPluginFactory {
     private final PluginRequestsSerializer pluginRequestsSerializer = new PluginRequestsSerializer();
     private final PluginRepositoryRegistry pluginRepositoryRegistry;
     private final PluginRepositoryFactory pluginRepositoryFactory;
+    private final BuildOperationExecutor buildOperationExecutor;
 
     public DefaultScriptPluginFactory(ScriptCompilerFactory scriptCompilerFactory,
                                       Factory<LoggingManagerInternal> loggingManagerFactory,
@@ -81,7 +83,8 @@ public class DefaultScriptPluginFactory implements ScriptPluginFactory {
                                       DocumentationRegistry documentationRegistry,
                                       ModelRuleSourceDetector modelRuleSourceDetector,
                                       PluginRepositoryRegistry pluginRepositoryRegistry,
-                                      PluginRepositoryFactory pluginRepositoryFactory) {
+                                      PluginRepositoryFactory pluginRepositoryFactory,
+                                      BuildOperationExecutor buildOperationExecutor) {
         this.scriptCompilerFactory = scriptCompilerFactory;
         this.loggingManagerFactory = loggingManagerFactory;
         this.instantiator = instantiator;
@@ -93,6 +96,7 @@ public class DefaultScriptPluginFactory implements ScriptPluginFactory {
         this.modelRuleSourceDetector = modelRuleSourceDetector;
         this.pluginRepositoryRegistry = pluginRepositoryRegistry;
         this.pluginRepositoryFactory = pluginRepositoryFactory;
+        this.buildOperationExecutor = buildOperationExecutor;
     }
 
     public ScriptPlugin create(ScriptSource scriptSource, ScriptHandler scriptHandler, ClassLoaderScope targetScope, ClassLoaderScope baseScope, boolean topLevelScript) {
@@ -135,6 +139,7 @@ public class DefaultScriptPluginFactory implements ScriptPluginFactory {
             services.add(ModelRuleSourceDetector.class, modelRuleSourceDetector);
             services.add(PluginRepositoryRegistry.class, pluginRepositoryRegistry);
             services.add(PluginRepositoryFactory.class, pluginRepositoryFactory);
+            services.add(BuildOperationExecutor.class, buildOperationExecutor);
 
             final ScriptTarget initialPassScriptTarget = initialPassTarget(target);
 

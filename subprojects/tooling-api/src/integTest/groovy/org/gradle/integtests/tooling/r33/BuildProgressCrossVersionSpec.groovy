@@ -153,19 +153,10 @@ class BuildProgressCrossVersionSpec extends ToolingApiSpecification {
         then:
         events.assertIsABuild()
 
-        def configureBuild = events.operation("Configure build")
-
-        def configureRoot = events.operation("Configure project :")
-        configureRoot.parent == configureBuild
-        configureBuild.children.contains(configureRoot)
-
-        def configureA = events.operation("Configure project :a")
-        configureA.parent == configureRoot
-        configureRoot.children == [configureA]
-
-        def configureB = events.operation("Configure project :b")
-        configureB.parent == configureA
-        configureA.children == [configureB]
+        events.operation("Configure build")
+            .descendant("Configure project :")
+            .descendant("Configure project :a")
+            .descendant("Configure project :b")
     }
 
     def "generates events for dependency resolution"() {

@@ -42,6 +42,7 @@ import org.gradle.api.resources.ResourceHandler;
 import org.gradle.api.tasks.WorkResult;
 import org.gradle.configuration.ScriptPluginFactory;
 import org.gradle.internal.Actions;
+import org.gradle.internal.progress.BuildOperationExecutor;
 import org.gradle.internal.reflect.Instantiator;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.process.ExecResult;
@@ -59,6 +60,7 @@ public abstract class DefaultScript extends BasicScript {
     private FileOperations fileOperations;
     private ProcessOperations processOperations;
     private LoggingManager loggingManager;
+    private BuildOperationExecutor buildOperationExecutor;
 
     public ServiceRegistry __scriptServices;
 
@@ -67,6 +69,7 @@ public abstract class DefaultScript extends BasicScript {
         super.init(target, services);
         this.__scriptServices = services;
         loggingManager = services.get(LoggingManager.class);
+        buildOperationExecutor = services.get(BuildOperationExecutor.class);
         Instantiator instantiator = services.get(Instantiator.class);
         FileLookup fileLookup = services.get(FileLookup.class);
         DirectoryFileTreeFactory directoryFileTreeFactory = services.get(DirectoryFileTreeFactory.class);
@@ -96,6 +99,7 @@ public abstract class DefaultScript extends BasicScript {
             __scriptServices.get(ScriptPluginFactory.class),
             __scriptServices.get(ScriptHandlerFactory.class),
             classLoaderScope,
+            buildOperationExecutor,
             getScriptTarget()
         );
     }

@@ -20,6 +20,7 @@ import org.gradle.api.internal.initialization.ClassLoaderScope
 import org.gradle.api.internal.initialization.ScriptHandlerFactory
 import org.gradle.api.internal.initialization.ScriptHandlerInternal
 import org.gradle.groovy.scripts.ScriptSource
+import org.gradle.internal.progress.TestBuildOperationExecutor
 import org.gradle.internal.resource.ResourceLocation
 import org.gradle.internal.resource.TextResource
 import spock.lang.Specification
@@ -51,7 +52,7 @@ class DefaultInitScriptProcessorTest extends Specification {
         1 * scriptPluginFactory.create(initScriptMock, scriptHandler, siblingScope, gradleScope, true) >> scriptPlugin
         1 * scriptPlugin.apply(gradleMock)
 
-        DefaultInitScriptProcessor processor = new DefaultInitScriptProcessor(scriptPluginFactory, scriptHandlerFactory)
+        DefaultInitScriptProcessor processor = new DefaultInitScriptProcessor(scriptPluginFactory, scriptHandlerFactory, new TestBuildOperationExecutor())
 
         then:
         processor.process(initScriptMock, gradleMock)

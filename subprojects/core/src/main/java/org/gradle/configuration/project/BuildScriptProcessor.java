@@ -15,9 +15,12 @@
  */
 package org.gradle.configuration.project;
 
+import org.gradle.api.Action;
 import org.gradle.api.internal.project.ProjectInternal;
 import org.gradle.configuration.ScriptPlugin;
 import org.gradle.configuration.ScriptPluginFactory;
+import org.gradle.internal.operations.BuildOperationContext;
+import org.gradle.internal.progress.BuildOperationExecutor;
 import org.gradle.internal.time.Timer;
 import org.gradle.internal.time.Timers;
 import org.slf4j.Logger;
@@ -26,17 +29,24 @@ import org.slf4j.LoggerFactory;
 public class BuildScriptProcessor implements ProjectConfigureAction {
     private static final Logger LOGGER = LoggerFactory.getLogger(BuildScriptProcessor.class);
     private final ScriptPluginFactory configurerFactory;
+    private final BuildOperationExecutor buildOperationExecutor;
 
-    public BuildScriptProcessor(ScriptPluginFactory configurerFactory) {
+    public BuildScriptProcessor(ScriptPluginFactory configurerFactory, BuildOperationExecutor buildOperationExecutor) {
         this.configurerFactory = configurerFactory;
+        this.buildOperationExecutor = buildOperationExecutor;
     }
 
-    public void execute(ProjectInternal project) {
+    public void execute(final ProjectInternal project) {
         LOGGER.info("Evaluating {} using {}.", project, project.getBuildScriptSource().getDisplayName());
-        final Timer clock = Timers.startTimer();
+        Timer clock = Timers.startTimer();
         try {
-            ScriptPlugin configurer = configurerFactory.create(project.getBuildScriptSource(), project.getBuildscript(), project.getClassLoaderScope(), project.getBaseClassLoaderScope(), true);
-            configurer.apply(project);
+            final ScriptPlugin configurer = configurerFactory.create(project.getBuildScriptSource(), project.getBuildscript(), project.getClassLoaderScope(), project.getBaseClassLoaderScope(), true);
+            buildOperationExecutor.run("Apply " + project + " build script", new Action<BuildOperationContext>() {
+                @Override
+                public void execute(BuildOperationContext buildOperationContext) {
+                    configurer.apply(project);
+                }
+            });
         } finally {
             LOGGER.debug("Timing: Running the build script took {}", clock.getElapsed());
         }

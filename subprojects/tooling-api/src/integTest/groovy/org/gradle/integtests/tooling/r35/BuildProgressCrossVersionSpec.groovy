@@ -32,12 +32,12 @@ import org.junit.Rule
 class BuildProgressCrossVersionSpec extends ToolingApiSpecification {
     public static final String REUSE_USER_HOME_SERVICES = "org.gradle.internal.reuse.user.home.services";
 
-    @Rule public final RepositoryHttpServer server = new RepositoryHttpServer(temporaryFolder)
+    @Rule
+    public final RepositoryHttpServer server = new RepositoryHttpServer(temporaryFolder)
 
     def "generates events for interleaved project configuration and dependency resolution"() {
         given:
         settingsFile << """
-            
             rootProject.name = 'multi'
             include 'a', 'b'
         """
@@ -67,31 +67,18 @@ class BuildProgressCrossVersionSpec extends ToolingApiSpecification {
         then:
         events.assertIsABuild()
 
-        def configureBuild = events.operation("Configure build")
+        def applyRootBuildScript = events.operation("Apply root project 'multi' build script")
 
-        def configureRoot = events.operation("Configure project :")
-        configureRoot.parent == configureBuild
-        configureBuild.children.contains(configureRoot)
+        def resolveCompile = applyRootBuildScript.child("Resolve dependencies :compile")
+        applyRootBuildScript.child("Resolve artifact a.jar (project :a)")
+        applyRootBuildScript.child("Resolve artifact b.jar (project :b)")
 
-        def resolveCompile = events.operation("Resolve dependencies :compile")
-        def resolveArtifactAinRoot = events.operation(configureRoot, "Resolve artifact a.jar (project :a)")
-        def resolveArtifactBinRoot = events.operation(configureRoot, "Resolve artifact b.jar (project :b)")
-        resolveCompile.parent == configureRoot
-        configureRoot.children == [resolveCompile, resolveArtifactAinRoot, resolveArtifactBinRoot]
+        def applyProjectABuildScript = resolveCompile.child("Configure project :a").child("Apply project ':a' build script")
 
-        def configureA = events.operation("Configure project :a")
-        configureA.parent == resolveCompile
-        resolveCompile.children == [configureA]
+        def resolveCompileA = applyProjectABuildScript.child("Resolve dependencies :a:compile")
+        applyProjectABuildScript.child("Resolve artifact b.jar (project :b)")
 
-        def resolveCompileA = events.operation("Resolve dependencies :a:compile")
-        def resolveArtifactBinA = events.operation(configureA, "Resolve artifact b.jar (project :b)")
-
-        resolveCompileA.parent == configureA
-        configureA.children == [resolveCompileA, resolveArtifactBinA]
-
-        def configureB = events.operation("Configure project :b")
-        configureB.parent == resolveCompileA
-        resolveCompileA.children == [configureB]
+        resolveCompileA.child("Configure project :b")
     }
 
     @LeaksFileHandles
@@ -106,7 +93,7 @@ class BuildProgressCrossVersionSpec extends ToolingApiSpecification {
         settingsFile << """
             rootProject.name = 'root'
             include 'a'
-        """
+        """.stripIndent()
         buildFile << """
             allprojects {
                 apply plugin:'java'
@@ -122,7 +109,7 @@ class BuildProgressCrossVersionSpec extends ToolingApiSpecification {
                 compile "group:projectD:2.0-SNAPSHOT"
             }
             configurations.compile.each { println it }
-"""
+        """.stripIndent()
         when:
         projectB.pom.expectGet()
         projectB.artifact.expectGet()
@@ -147,33 +134,27 @@ class BuildProgressCrossVersionSpec extends ToolingApiSpecification {
         then:
         events.assertIsABuild()
 
-        def configureBuild = events.operation("Configure build")
+        def applyBuildScript = events.operation "Apply root project 'root' build script"
 
-        def configureRoot = events.operation("Configure project :")
-        configureRoot.parent == configureBuild
-        configureBuild.children.contains(configureRoot)
+        applyBuildScript.child("Resolve dependencies :compile").with {
+            it.child "Configure project :a"
+            it.child "Download http://localhost:${server.port}${projectB.pomPath}"
+            it.child "Download http://localhost:${server.port}/repo/group/projectC/maven-metadata.xml"
+            it.child "Download http://localhost:${server.port}${projectC.pomPath}"
+            it.child "Download http://localhost:${server.port}${projectD.metaDataPath}"
+            it.child "Download http://localhost:${server.port}${projectD.pomPath}"
+        }
 
-        def resolveCompile = events.operation("Resolve dependencies :compile")
-        def resolveArtifactA = events.operation("Resolve artifact a.jar (project :a)")
-        def resolveArtifactB = events.operation("Resolve artifact projectB.jar (group:projectB:1.0)")
-        def resolveArtifactC = events.operation("Resolve artifact projectC.jar (group:projectC:1.5)")
-        def resolveArtifactD = events.operation("Resolve artifact projectD.jar (group:projectD:2.0-SNAPSHOT)")
-        def downloadBMetadata = events.operation("Download http://localhost:${server.port}${projectB.pomPath}")
-        def downloadBArtifact = events.operation("Download http://localhost:${server.port}${projectB.artifactPath}")
-        def downloadCRootMetadata = events.operation("Download http://localhost:${server.port}/repo/group/projectC/maven-metadata.xml")
-        def downloadCPom = events.operation("Download http://localhost:${server.port}${projectC.pomPath}")
-        def downloadCArtifact = events.operation("Download http://localhost:${server.port}${projectC.artifactPath}")
-        def downloadDPom = events.operation("Download http://localhost:${server.port}${projectD.pomPath}")
-        def downloadDMavenMetadata = events.operation("Download http://localhost:${server.port}${projectD.metaDataPath}")
-        resolveCompile.parent == configureRoot
-        configureRoot.children == [resolveCompile, resolveArtifactA, resolveArtifactB, resolveArtifactC, resolveArtifactD]
+        applyBuildScript.child("Resolve artifact a.jar (project :a)").children.isEmpty()
 
-        def configureA = events.operation("Configure project :a")
-        configureA.parent == resolveCompile
-        resolveCompile.children == [configureA, downloadBMetadata, downloadCRootMetadata, downloadCPom, downloadDMavenMetadata, downloadDPom]
-        resolveArtifactA.children.isEmpty()
-        resolveArtifactB.children == [downloadBArtifact]
-        resolveArtifactC.children == [downloadCArtifact]
+        applyBuildScript.child("Resolve artifact projectB.jar (group:projectB:1.0)")
+            .child "Download http://localhost:${server.port}${projectB.artifactPath}"
+
+        applyBuildScript.child("Resolve artifact projectC.jar (group:projectC:1.5)")
+            .child "Download http://localhost:${server.port}${projectC.artifactPath}"
+
+        applyBuildScript.child("Resolve artifact projectD.jar (group:projectD:2.0-SNAPSHOT)")
+            .child "Download http://localhost:${server.port}${projectD.artifactPath}"
 
         cleanup:
         try {
@@ -256,6 +237,131 @@ class BuildProgressCrossVersionSpec extends ToolingApiSpecification {
         and:
         events.operation('Task :runInProcess').descendant('My in-process worker action')
         events.operation('Task :runForked').descendant('My forked worker action')
+    }
+
+    def "generates events for applied init-scripts"() {
+        given:
+        def initScript1 = file('init1.gradle')
+        def initScript2 = file('init2.gradle')
+        [initScript1, initScript2].each { it << '' }
+
+        when:
+        def events = new ProgressEvents()
+        withConnection {
+            ProjectConnection connection ->
+                connection.newBuild()
+                    .withArguments('--init-script', initScript1.toString(), '--init-script', initScript2.toString())
+                    .addProgressListener(events)
+                    .run()
+        }
+
+        then:
+        events.assertIsABuild()
+
+        and:
+        events.operation('Run init scripts').with {
+            it.child "Apply initialization script '${initScript1.absolutePath}'"
+            it.child "Apply initialization script '${initScript2.absolutePath}'"
+        }
+    }
+
+    def "generates events for applied build scripts"() {
+        given:
+        settingsFile << '''
+            rootProject.name = 'multi'
+            include 'a', 'b'
+        '''.stripIndent()
+        def buildSrcFile = file('buildSrc/build.gradle')
+        def aBuildFile = file('a/build.gradle')
+        def bBuildFile = file('b/build.gradle')
+        [buildSrcFile, aBuildFile, bBuildFile].each { it << '' }
+
+        when:
+        def events = new ProgressEvents()
+        withConnection {
+            ProjectConnection connection ->
+                connection.newBuild()
+                    .addProgressListener(events)
+                    .run()
+        }
+
+        then:
+        events.assertIsABuild()
+
+        and:
+        events.operation('Configure project :buildSrc').child "Apply project ':buildSrc' build script"
+        events.operation('Configure project :').child "Apply root project 'multi' build script"
+        events.operation('Configure project :a').child "Apply project ':a' build script"
+        events.operation('Configure project :b').child "Apply project ':b' build script"
+    }
+
+    def "generates events for applied script plugins"() {
+        given:
+        def scriptPlugin1 = file('scriptPlugin1.gradle')
+        def scriptPlugin2 = file('scriptPlugin2.gradle')
+        [scriptPlugin1, scriptPlugin2].each { it << '' }
+
+        and:
+        def initScript = file('init.gradle')
+        def buildSrcScript = file('buildSrc/build.gradle')
+        settingsFile << '''
+            rootProject.name = 'multi'
+            include 'a', 'b'
+        '''.stripIndent()
+
+        and:
+        [initScript, buildSrcScript, settingsFile, buildFile, file('a/build.gradle'), file('b/build.gradle')].each {
+            it << """
+                apply from: '${scriptPlugin1.absolutePath}'
+                apply from: '${scriptPlugin2.absolutePath}'
+            """.stripIndent()
+        }
+
+        when:
+        def events = new ProgressEvents()
+        withConnection {
+            ProjectConnection connection ->
+                connection.newBuild()
+                    .withArguments('--init-script', initScript.toString())
+                    .addProgressListener(events)
+                    .run()
+        }
+
+        then:
+        events.assertIsABuild()
+
+        and:
+        println events.describeOperationsTree()
+
+        events.operation("Apply initialization script '${initScript.absolutePath}'").with { applyInitScript ->
+            applyInitScript.child "Apply script '${scriptPlugin1.absolutePath}' to build"
+            applyInitScript.child "Apply script '${scriptPlugin2.absolutePath}' to build"
+        }
+
+        events.operation("Apply project ':buildSrc' build script").with { applyBuildSrc ->
+            applyBuildSrc.child "Apply script '${scriptPlugin1.absolutePath}' to project ':buildSrc'"
+            applyBuildSrc.child "Apply script '${scriptPlugin2.absolutePath}' to project ':buildSrc'"
+        }
+
+        events.operation("Apply settings file '${settingsFile.absolutePath}'").with { applySettings ->
+            applySettings.child "Apply script '${scriptPlugin1.absolutePath}' to settings 'multi'"
+            applySettings.child "Apply script '${scriptPlugin2.absolutePath}' to settings 'multi'"
+        }
+
+        events.operation("Apply root project 'multi' build script").with { applyRootProject ->
+            applyRootProject.child "Apply script '${scriptPlugin1.absolutePath}' to root project 'multi'"
+            applyRootProject.child "Apply script '${scriptPlugin2.absolutePath}' to root project 'multi'"
+        }
+
+        events.operation("Apply project ':a' build script").with { applyProjectA ->
+            applyProjectA.child "Apply script '${scriptPlugin1.absolutePath}' to project ':a'"
+            applyProjectA.child "Apply script '${scriptPlugin2.absolutePath}' to project ':a'"
+        }
+
+        events.operation("Apply project ':b' build script").with { applyProjectB ->
+            applyProjectB.child "Apply script '${scriptPlugin1.absolutePath}' to project ':b'"
+            applyProjectB.child "Apply script '${scriptPlugin2.absolutePath}' to project ':b'"
+        }
     }
 
     MavenHttpRepository getMavenHttpRepo() {

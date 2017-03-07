@@ -25,6 +25,7 @@ import org.gradle.api.internal.file.collections.DirectoryFileTreeFactory
 import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.logging.LoggingManager
 import org.gradle.internal.logging.StandardOutputCapture
+import org.gradle.internal.progress.BuildOperationExecutor
 import org.gradle.internal.reflect.Instantiator
 import org.gradle.internal.service.ServiceRegistry
 import org.gradle.test.fixtures.file.TestNameTestDirectoryProvider
@@ -54,6 +55,8 @@ class DefaultScriptTest {
             will(returnValue(context.mock(LoggingManager.class)))
             allowing(serviceRegistryMock).get(Instantiator)
             will(returnValue(context.mock(Instantiator)))
+            allowing(serviceRegistryMock).get(BuildOperationExecutor)
+            will(returnValue(context.mock(BuildOperationExecutor)))
             allowing(serviceRegistryMock).get(FileLookup)
             will(returnValue(context.mock(FileLookup)))
             allowing(serviceRegistryMock).get(DirectoryFileTreeFactory)
