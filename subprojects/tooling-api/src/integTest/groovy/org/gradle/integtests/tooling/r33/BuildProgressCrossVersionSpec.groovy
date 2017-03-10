@@ -126,6 +126,7 @@ class BuildProgressCrossVersionSpec extends ToolingApiSpecification {
         configureBuild.children == [configureRoot, configureA]
     }
 
+    @TargetGradleVersion(">=3.3 <3.5")
     def "generates events for project configuration where project configuration is nested"() {
         given:
         settingsFile << """
@@ -153,10 +154,19 @@ class BuildProgressCrossVersionSpec extends ToolingApiSpecification {
         then:
         events.assertIsABuild()
 
-        events.operation("Configure build")
-            .descendant("Configure project :")
-            .descendant("Configure project :a")
-            .descendant("Configure project :b")
+        def configureBuild = events.operation("Configure build")
+
+        def configureRoot = events.operation("Configure project :")
+        configureRoot.parent == configureBuild
+        configureBuild.children.contains(configureRoot)
+
+        def configureA = events.operation("Configure project :a")
+        configureA.parent == configureRoot
+        configureRoot.children == [configureA]
+
+        def configureB = events.operation("Configure project :b")
+        configureB.parent == configureA
+        configureA.children == [configureB]
     }
 
     def "generates events for dependency resolution"() {
