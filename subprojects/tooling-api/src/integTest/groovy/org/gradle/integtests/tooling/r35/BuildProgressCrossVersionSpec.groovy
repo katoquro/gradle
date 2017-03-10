@@ -67,7 +67,9 @@ class BuildProgressCrossVersionSpec extends ToolingApiSpecification {
         then:
         events.assertIsABuild()
 
-        def applyRootBuildScript = events.operation("Apply root project 'multi' build script")
+        def configureRoot = events.operation("Configure project :")
+
+        def applyRootBuildScript = configureRoot.child("Apply root project 'multi' build script")
 
         def resolveCompile = applyRootBuildScript.child("Resolve dependencies :compile")
         applyRootBuildScript.child("Resolve artifact a.jar (project :a)")
