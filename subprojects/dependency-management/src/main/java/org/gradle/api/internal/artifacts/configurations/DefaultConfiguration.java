@@ -38,6 +38,7 @@ import org.gradle.api.artifacts.PublishArtifact;
 import org.gradle.api.artifacts.PublishArtifactSet;
 import org.gradle.api.artifacts.ResolutionStrategy;
 import org.gradle.api.artifacts.ResolvableDependencies;
+import org.gradle.api.artifacts.ResolveException;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolutionResult;
@@ -58,6 +59,9 @@ import org.gradle.api.internal.artifacts.Module;
 import org.gradle.api.internal.artifacts.ResolverResults;
 import org.gradle.api.internal.artifacts.component.ComponentIdentifierFactory;
 import org.gradle.api.internal.artifacts.dsl.dependencies.ProjectFinder;
+import org.gradle.api.internal.artifacts.ivyservice.DefaultLenientConfiguration;
+import org.gradle.api.internal.artifacts.ivyservice.ResolvedArtifactCollectingVisitor;
+import org.gradle.api.internal.artifacts.ivyservice.ResolvedFilesCollectingVisitor;
 import org.gradle.api.internal.artifacts.ivyservice.moduleconverter.ConfigurationComponentMetaDataBuilder;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.artifact.SelectedArtifactSet;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.projectresult.ResolvedProjectConfiguration;
@@ -81,6 +85,7 @@ import org.gradle.internal.Cast;
 import org.gradle.internal.Factories;
 import org.gradle.internal.Factory;
 import org.gradle.internal.ImmutableActionSet;
+import org.gradle.internal.UncheckedException;
 import org.gradle.internal.component.local.model.DefaultLocalComponentMetadata;
 import org.gradle.internal.component.model.ComponentResolveMetadata;
 import org.gradle.internal.event.ListenerBroadcast;
@@ -764,6 +769,7 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
         private final Spec<? super Dependency> dependencySpec;
         private final AttributeContainerInternal viewAttributes;
         private final Spec<? super ComponentIdentifier> componentSpec;
+        private final boolean lenient;
         private SelectedArtifactSet selectedArtifacts;
 
         private ConfigurationFileCollection(Spec<? super Dependency> dependencySpec) {
@@ -771,13 +777,15 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
             this.dependencySpec = dependencySpec;
             this.viewAttributes = ImmutableAttributes.EMPTY;
             this.componentSpec = Specs.satisfyAll();
+            lenient = false;
         }
 
         private ConfigurationFileCollection(Spec<? super Dependency> dependencySpec, AttributeContainerInternal viewAttributes,
-                                            Spec<? super ComponentIdentifier> componentSpec) {
+                                            Spec<? super ComponentIdentifier> componentSpec, boolean lenient) {
             this.dependencySpec = dependencySpec;
             this.viewAttributes = viewAttributes.asImmutable();
             this.componentSpec = componentSpec;
+            this.lenient = lenient;
         }
 
         private ConfigurationFileCollection(Closure dependencySpecClosure) {
@@ -807,7 +815,15 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
         }
 
         public Set<File> getFiles() {
-            return getSelectedArtifacts().collectFiles(new LinkedHashSet<File>());
+            LinkedHashSet<File> files = new LinkedHashSet<File>();
+            ResolvedFilesCollectingVisitor visitor = new ResolvedFilesCollectingVisitor(files);
+            getSelectedArtifacts().visitArtifacts(visitor);
+            visitor.addArtifacts();
+
+            if (!lenient) {
+                rethrowFailure("files", visitor.failures);
+            }
+            return files;
         }
 
         private SelectedArtifactSet getSelectedArtifacts() {
@@ -819,6 +835,17 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
             return selectedArtifacts;
         }
     }
+
+    private void rethrowFailure(String type, List<Throwable> failures) {
+        if (failures.isEmpty()) {
+            return;
+        }
+        if (failures.size() == 1 && failures.get(0) instanceof ResolveException) {
+            throw UncheckedException.throwAsUncheckedException(failures.get(0));
+        }
+        throw new DefaultLenientConfiguration.ArtifactResolveException(type, getPath(), getDisplayName(), failures);
+    }
+
 
     private void assertResolvingAllowed() {
         if (!canBeResolved) {
@@ -976,6 +1003,7 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
         private class ConfigurationViewBuilder implements ArtifactView {
             private AttributeContainerInternal viewAttributes;
             private Spec<? super ComponentIdentifier> componentFilter;
+            private boolean lenient;
 
             @Override
             public AttributeContainer getAttributes() {
@@ -1005,13 +1033,19 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
             }
 
             @Override
+            public ArtifactView lenient() {
+                this.lenient = true;
+                return this;
+            }
+
+            @Override
             public ArtifactCollection getArtifacts() {
-                return new ConfigurationArtifactCollection(lockViewAttributes(), lockComponentFilter());
+                return new ConfigurationArtifactCollection(lockViewAttributes(), lockComponentFilter(), lenient);
             }
 
             @Override
             public FileCollection getFiles() {
-                return new ConfigurationFileCollection(Specs.<Dependency>satisfyAll(), lockViewAttributes(), lockComponentFilter());
+                return new ConfigurationFileCollection(Specs.<Dependency>satisfyAll(), lockViewAttributes(), lockComponentFilter(), lenient);
             }
 
             private Spec<? super ComponentIdentifier> lockComponentFilter() {
@@ -1036,16 +1070,18 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
         private final ConfigurationFileCollection fileCollection;
         private final AttributeContainerInternal viewAttributes;
         private final Spec<? super ComponentIdentifier> componentFilter;
+        private final boolean lenient;
 
         ConfigurationArtifactCollection() {
-            this(ImmutableAttributes.EMPTY, Specs.<ComponentIdentifier>satisfyAll());
+            this(ImmutableAttributes.EMPTY, Specs.<ComponentIdentifier>satisfyAll(), false);
         }
 
-        ConfigurationArtifactCollection(AttributeContainerInternal attributes, Spec<? super ComponentIdentifier> componentFilter) {
+        ConfigurationArtifactCollection(AttributeContainerInternal attributes, Spec<? super ComponentIdentifier> componentFilter, boolean lenient) {
             assertResolvingAllowed();
             this.viewAttributes = attributes.asImmutable();
             this.componentFilter = componentFilter;
-            this.fileCollection = new ConfigurationFileCollection(Specs.<Dependency>satisfyAll(), viewAttributes, this.componentFilter);
+            this.fileCollection = new ConfigurationFileCollection(Specs.<Dependency>satisfyAll(), viewAttributes, this.componentFilter, lenient);
+            this.lenient = lenient;
         }
 
         @Override
@@ -1055,7 +1091,15 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
 
         @Override
         public Set<ResolvedArtifactResult> getArtifacts() {
-            return fileCollection.getSelectedArtifacts().collectArtifacts(new LinkedHashSet<ResolvedArtifactResult>());
+            LinkedHashSet<ResolvedArtifactResult> artifactResults = new LinkedHashSet<ResolvedArtifactResult>();
+
+            ResolvedArtifactCollectingVisitor visitor = new ResolvedArtifactCollectingVisitor(artifactResults);
+            fileCollection.getSelectedArtifacts().visitArtifacts(visitor);
+
+            if (!lenient) {
+                rethrowFailure("artifacts", visitor.failures);
+            }
+            return artifactResults;
         }
 
         @Override

@@ -40,6 +40,8 @@ public interface ArtifactView extends HasConfigurableAttributes<ArtifactView> {
     @Incubating
     ArtifactView componentFilter(Spec<? super ComponentIdentifier> componentFilter);
 
+    ArtifactView lenient();
+
     /**
      * Returns the collection of artifacts matching the requested attributes that are sourced from Components matching the specified filter.
      */
