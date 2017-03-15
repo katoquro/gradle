@@ -16,6 +16,7 @@
 package org.gradle.configuration.project
 
 import org.gradle.api.initialization.dsl.ScriptHandler
+import org.gradle.api.internal.configuration.DefaultScriptPluginApplicator
 import org.gradle.api.internal.initialization.ClassLoaderScope
 import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.configuration.ScriptPlugin
@@ -31,7 +32,7 @@ class BuildScriptProcessorTest extends Specification {
     def scriptPlugin = Mock(ScriptPlugin)
     def targetScope = Mock(ClassLoaderScope)
     def baseScope = Mock(ClassLoaderScope)
-    def BuildScriptProcessor buildScriptProcessor = new BuildScriptProcessor(configurerFactory, new TestBuildOperationExecutor())
+    def BuildScriptProcessor buildScriptProcessor = new BuildScriptProcessor(new DefaultScriptPluginApplicator(configurerFactory, new TestBuildOperationExecutor()))
     private ScriptHandler scriptHandler;
 
     def "setup"() {

@@ -35,6 +35,8 @@ import org.gradle.api.internal.classpath.ModuleRegistry;
 import org.gradle.api.internal.classpath.PluginModuleRegistry;
 import org.gradle.api.internal.component.ComponentTypeRegistry;
 import org.gradle.api.internal.component.DefaultComponentTypeRegistry;
+import org.gradle.api.internal.configuration.DefaultScriptPluginApplicator;
+import org.gradle.api.internal.configuration.ScriptPluginApplicator;
 import org.gradle.api.internal.file.FileLookup;
 import org.gradle.api.internal.file.FileResolver;
 import org.gradle.api.internal.file.TemporaryFileProvider;
@@ -228,10 +230,10 @@ public class BuildScopeServices extends DefaultServiceRegistry {
             new InstantiatingBuildLoader(get(IProjectFactory.class)));
     }
 
-    protected ProjectEvaluator createProjectEvaluator(BuildOperationExecutor buildOperationExecutor, CachingServiceLocator cachingServiceLocator, ScriptPluginFactory scriptPluginFactory) {
+    protected ProjectEvaluator createProjectEvaluator(BuildOperationExecutor buildOperationExecutor, CachingServiceLocator cachingServiceLocator, ScriptPluginApplicator scriptPluginApplicator) {
         ConfigureActionsProjectEvaluator withActionsEvaluator = new ConfigureActionsProjectEvaluator(
             PluginsProjectConfigureActions.from(cachingServiceLocator),
-            new BuildScriptProcessor(scriptPluginFactory, buildOperationExecutor),
+            new BuildScriptProcessor(scriptPluginApplicator),
             new DelayedConfigurationActions()
         );
         return new LifecycleProjectEvaluator(buildOperationExecutor, withActionsEvaluator);
@@ -307,6 +309,10 @@ public class BuildScopeServices extends DefaultServiceRegistry {
             get(BuildOperationExecutor.class));
     }
 
+    protected ScriptPluginApplicator createScriptPluginApplicator(ScriptPluginFactory scriptPluginFactory, BuildOperationExecutor buildOperationExecutor) {
+        return new DefaultScriptPluginApplicator(scriptPluginFactory, buildOperationExecutor);
+    }
+
     protected SettingsLoaderFactory createSettingsLoaderFactory(SettingsProcessor settingsProcessor, NestedBuildFactory nestedBuildFactory,
                                                                 ClassLoaderScopeRegistry classLoaderScopeRegistry, CacheRepository cacheRepository,
                                                                 BuildLoader buildLoader, BuildOperationExecutor buildOperationExecutor,
@@ -330,30 +336,28 @@ public class BuildScopeServices extends DefaultServiceRegistry {
         );
     }
 
-    protected InitScriptHandler createInitScriptHandler(ScriptPluginFactory scriptPluginFactory, ScriptHandlerFactory scriptHandlerFactory, BuildOperationExecutor buildOperationExecutor) {
+    protected InitScriptHandler createInitScriptHandler(ScriptPluginApplicator scriptPluginApplicator, ScriptHandlerFactory scriptHandlerFactory, BuildOperationExecutor buildOperationExecutor) {
         return new InitScriptHandler(
             new DefaultInitScriptProcessor(
-                scriptPluginFactory,
-                scriptHandlerFactory,
-                buildOperationExecutor
+                scriptPluginApplicator,
+                scriptHandlerFactory
             ),
             buildOperationExecutor
         );
     }
 
-    protected SettingsProcessor createSettingsProcessor(ScriptPluginFactory scriptPluginFactory, ScriptHandlerFactory scriptHandlerFactory, Instantiator instantiator,
+    protected SettingsProcessor createSettingsProcessor(ScriptPluginApplicator scriptPluginApplicator, ScriptHandlerFactory scriptHandlerFactory, Instantiator instantiator,
                                                         ServiceRegistryFactory serviceRegistryFactory, IGradlePropertiesLoader propertiesLoader, BuildOperationExecutor buildOperationExecutor) {
         return new NotifyingSettingsProcessor(
             new PropertiesLoadingSettingsProcessor(
                 new ScriptEvaluatingSettingsProcessor(
-                    scriptPluginFactory,
+                    scriptPluginApplicator,
                     scriptHandlerFactory,
                     new SettingsFactory(
                         instantiator,
                         serviceRegistryFactory
                     ),
-                    propertiesLoader,
-                    buildOperationExecutor
+                    propertiesLoader
                 ),
                 propertiesLoader
             ),

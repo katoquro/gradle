@@ -52,6 +52,7 @@ import org.gradle.api.internal.NoConventionMapping;
 import org.gradle.api.internal.ProcessOperations;
 import org.gradle.api.internal.artifacts.Module;
 import org.gradle.api.internal.artifacts.configurations.DependencyMetaDataProvider;
+import org.gradle.api.internal.configuration.ScriptPluginApplicator;
 import org.gradle.api.internal.file.FileOperations;
 import org.gradle.api.internal.file.FileResolver;
 import org.gradle.api.internal.file.SourceDirectorySetFactory;
@@ -68,7 +69,6 @@ import org.gradle.api.plugins.Convention;
 import org.gradle.api.plugins.ExtensionContainer;
 import org.gradle.api.resources.ResourceHandler;
 import org.gradle.api.tasks.WorkResult;
-import org.gradle.configuration.ScriptPluginFactory;
 import org.gradle.configuration.project.ProjectConfigurationActionContainer;
 import org.gradle.configuration.project.ProjectEvaluator;
 import org.gradle.groovy.scripts.ScriptSource;
@@ -80,7 +80,6 @@ import org.gradle.internal.logging.LoggingManagerInternal;
 import org.gradle.internal.logging.StandardOutputCapture;
 import org.gradle.internal.metaobject.BeanDynamicObject;
 import org.gradle.internal.metaobject.DynamicObject;
-import org.gradle.internal.progress.BuildOperationExecutor;
 import org.gradle.internal.reflect.Instantiator;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.internal.service.scopes.ServiceRegistryFactory;
@@ -1187,10 +1186,9 @@ public class DefaultProject extends AbstractPluginAware implements ProjectIntern
     protected DefaultObjectConfigurationAction createObjectConfigurationAction() {
         return new DefaultObjectConfigurationAction(
             getFileResolver(),
-            getScriptPluginFactory(),
+            getScriptPluginApplicator(),
             getScriptHandlerFactory(),
             getBaseClassLoaderScope(),
-            getServices().get(BuildOperationExecutor.class),
             this);
     }
 
@@ -1202,7 +1200,7 @@ public class DefaultProject extends AbstractPluginAware implements ProjectIntern
     }
 
     @Inject
-    protected ScriptPluginFactory getScriptPluginFactory() {
+    protected ScriptPluginApplicator getScriptPluginApplicator() {
         // Decoration takes care of the implementation
         throw new UnsupportedOperationException();
     }

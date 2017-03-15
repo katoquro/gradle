@@ -15,6 +15,7 @@
  */
 package org.gradle.api.internal.plugins
 
+import org.gradle.api.internal.configuration.DefaultScriptPluginApplicator
 import org.gradle.api.internal.file.FileResolver
 import org.gradle.api.internal.initialization.ClassLoaderScope
 import org.gradle.api.internal.initialization.ScriptHandlerFactory
@@ -37,7 +38,8 @@ class DefaultObjectConfigurationActionTest extends Specification {
     def parentCompileScope = Mock(ClassLoaderScope)
     def configurer = Mock(ScriptPlugin)
 
-    DefaultObjectConfigurationAction action = new DefaultObjectConfigurationAction(resolver, scriptPluginFactory, scriptHandlerFactory, parentCompileScope, new TestBuildOperationExecutor(), target)
+    def scriptPluginApplicator = new DefaultScriptPluginApplicator(scriptPluginFactory, new TestBuildOperationExecutor())
+    DefaultObjectConfigurationAction action = new DefaultObjectConfigurationAction(resolver, scriptPluginApplicator, scriptHandlerFactory, parentCompileScope, target)
 
     void doesNothingWhenNothingSpecified() {
         expect:

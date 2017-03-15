@@ -16,6 +16,7 @@
 package org.gradle.configuration
 
 import org.gradle.api.internal.GradleInternal
+import org.gradle.api.internal.configuration.DefaultScriptPluginApplicator
 import org.gradle.api.internal.initialization.ClassLoaderScope
 import org.gradle.api.internal.initialization.ScriptHandlerFactory
 import org.gradle.api.internal.initialization.ScriptHandlerInternal
@@ -52,7 +53,7 @@ class DefaultInitScriptProcessorTest extends Specification {
         1 * scriptPluginFactory.create(initScriptMock, scriptHandler, siblingScope, gradleScope, true) >> scriptPlugin
         1 * scriptPlugin.apply(gradleMock)
 
-        DefaultInitScriptProcessor processor = new DefaultInitScriptProcessor(scriptPluginFactory, scriptHandlerFactory, new TestBuildOperationExecutor())
+        DefaultInitScriptProcessor processor = new DefaultInitScriptProcessor(new DefaultScriptPluginApplicator(scriptPluginFactory, new TestBuildOperationExecutor()), scriptHandlerFactory)
 
         then:
         processor.process(initScriptMock, gradleMock)

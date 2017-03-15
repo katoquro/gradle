@@ -69,13 +69,13 @@ class BuildProgressCrossVersionSpec extends ToolingApiSpecification {
 
         def configureRoot = events.operation("Configure project :")
 
-        def applyRootBuildScript = configureRoot.child("Apply root project 'multi' build script")
+        def applyRootBuildScript = configureRoot.child("Apply build file '${buildFile}' to root project 'multi'")
 
         def resolveCompile = applyRootBuildScript.child("Resolve dependencies :compile")
         applyRootBuildScript.child("Resolve artifact a.jar (project :a)")
         applyRootBuildScript.child("Resolve artifact b.jar (project :b)")
 
-        def applyProjectABuildScript = resolveCompile.child("Configure project :a").child("Apply project ':a' build script")
+        def applyProjectABuildScript = resolveCompile.child("Configure project :a").child("Apply build file '${file('a/build.gradle')}' to project ':a'")
 
         def resolveCompileA = applyProjectABuildScript.child("Resolve dependencies :a:compile")
         applyProjectABuildScript.child("Resolve artifact b.jar (project :b)")
@@ -136,7 +136,7 @@ class BuildProgressCrossVersionSpec extends ToolingApiSpecification {
         then:
         events.assertIsABuild()
 
-        def applyBuildScript = events.operation "Apply root project 'root' build script"
+        def applyBuildScript = events.operation "Apply build file '${buildFile}' to root project 'root'"
 
         applyBuildScript.child("Resolve dependencies :compile").with {
             it.child "Configure project :a"
@@ -262,8 +262,8 @@ class BuildProgressCrossVersionSpec extends ToolingApiSpecification {
 
         and:
         events.operation('Run init scripts').with {
-            it.child "Apply initialization script '${initScript1.absolutePath}'"
-            it.child "Apply initialization script '${initScript2.absolutePath}'"
+            it.child "Apply initialization script '${initScript1}' to build"
+            it.child "Apply initialization script '${initScript2}' to build"
         }
     }
 
@@ -291,10 +291,10 @@ class BuildProgressCrossVersionSpec extends ToolingApiSpecification {
         events.assertIsABuild()
 
         and:
-        events.operation('Configure project :buildSrc').child "Apply project ':buildSrc' build script"
-        events.operation('Configure project :').child "Apply root project 'multi' build script"
-        events.operation('Configure project :a').child "Apply project ':a' build script"
-        events.operation('Configure project :b').child "Apply project ':b' build script"
+        events.operation('Configure project :buildSrc').child "Apply build file '${buildSrcFile}' to project ':buildSrc'"
+        events.operation('Configure project :').child "Apply build file '${buildFile}' to root project 'multi'"
+        events.operation('Configure project :a').child "Apply build file '${aBuildFile}' to project ':a'"
+        events.operation('Configure project :b').child "Apply build file '${bBuildFile}' to project ':b'"
     }
 
     def "generates events for applied script plugins"() {
@@ -310,9 +310,9 @@ class BuildProgressCrossVersionSpec extends ToolingApiSpecification {
             rootProject.name = 'multi'
             include 'a', 'b'
         '''.stripIndent()
-
-        and:
-        [initScript, buildSrcScript, settingsFile, buildFile, file('a/build.gradle'), file('b/build.gradle')].each {
+        def aBuildFile = file('a/build.gradle')
+        def bBuildFile = file('b/build.gradle')
+        [initScript, buildSrcScript, settingsFile, buildFile, aBuildFile, bBuildFile].each {
             it << """
                 apply from: '${scriptPlugin1.absolutePath}'
                 apply from: '${scriptPlugin2.absolutePath}'
@@ -335,34 +335,34 @@ class BuildProgressCrossVersionSpec extends ToolingApiSpecification {
         and:
         println events.describeOperationsTree()
 
-        events.operation("Apply initialization script '${initScript.absolutePath}'").with { applyInitScript ->
-            applyInitScript.child "Apply script '${scriptPlugin1.absolutePath}' to build"
-            applyInitScript.child "Apply script '${scriptPlugin2.absolutePath}' to build"
+        events.operation("Apply initialization script '${initScript}' to build").with { applyInitScript ->
+            applyInitScript.child "Apply script '${scriptPlugin1}' to build"
+            applyInitScript.child "Apply script '${scriptPlugin2}' to build"
         }
 
-        events.operation("Apply project ':buildSrc' build script").with { applyBuildSrc ->
-            applyBuildSrc.child "Apply script '${scriptPlugin1.absolutePath}' to project ':buildSrc'"
-            applyBuildSrc.child "Apply script '${scriptPlugin2.absolutePath}' to project ':buildSrc'"
+        events.operation("Apply build file '${buildSrcScript}' to project ':buildSrc'").with { applyBuildSrc ->
+            applyBuildSrc.child "Apply script '${scriptPlugin1}' to project ':buildSrc'"
+            applyBuildSrc.child "Apply script '${scriptPlugin2}' to project ':buildSrc'"
         }
 
-        events.operation("Apply settings file '${settingsFile.absolutePath}'").with { applySettings ->
-            applySettings.child "Apply script '${scriptPlugin1.absolutePath}' to settings 'multi'"
-            applySettings.child "Apply script '${scriptPlugin2.absolutePath}' to settings 'multi'"
+        events.operation("Apply settings file '${settingsFile}' to settings '${settingsFile.parentFile.name}'").with { applySettings ->
+            applySettings.child "Apply script '${scriptPlugin1}' to settings 'multi'"
+            applySettings.child "Apply script '${scriptPlugin2}' to settings 'multi'"
         }
 
-        events.operation("Apply root project 'multi' build script").with { applyRootProject ->
-            applyRootProject.child "Apply script '${scriptPlugin1.absolutePath}' to root project 'multi'"
-            applyRootProject.child "Apply script '${scriptPlugin2.absolutePath}' to root project 'multi'"
+        events.operation("Apply build file '${buildFile}' to root project 'multi'").with { applyRootProject ->
+            applyRootProject.child "Apply script '${scriptPlugin1}' to root project 'multi'"
+            applyRootProject.child "Apply script '${scriptPlugin2}' to root project 'multi'"
         }
 
-        events.operation("Apply project ':a' build script").with { applyProjectA ->
-            applyProjectA.child "Apply script '${scriptPlugin1.absolutePath}' to project ':a'"
-            applyProjectA.child "Apply script '${scriptPlugin2.absolutePath}' to project ':a'"
+        events.operation("Apply build file '${aBuildFile}' to project ':a'").with { applyProjectA ->
+            applyProjectA.child "Apply script '${scriptPlugin1}' to project ':a'"
+            applyProjectA.child "Apply script '${scriptPlugin2}' to project ':a'"
         }
 
-        events.operation("Apply project ':b' build script").with { applyProjectB ->
-            applyProjectB.child "Apply script '${scriptPlugin1.absolutePath}' to project ':b'"
-            applyProjectB.child "Apply script '${scriptPlugin2.absolutePath}' to project ':b'"
+        events.operation("Apply build file '${bBuildFile}' to project ':b'").with { applyProjectB ->
+            applyProjectB.child "Apply script '${scriptPlugin1}' to project ':b'"
+            applyProjectB.child "Apply script '${scriptPlugin2}' to project ':b'"
         }
     }
 

@@ -15,16 +15,14 @@
  */
 package org.gradle.configuration;
 
-import org.gradle.api.Action;
 import org.gradle.api.initialization.dsl.ScriptHandler;
 import org.gradle.api.internal.GradleInternal;
+import org.gradle.api.internal.configuration.ScriptPluginApplicator;
 import org.gradle.api.internal.initialization.ClassLoaderScope;
 import org.gradle.api.internal.initialization.ScriptHandlerFactory;
 import org.gradle.groovy.scripts.ScriptSource;
 import org.gradle.internal.id.IdGenerator;
 import org.gradle.internal.id.LongIdGenerator;
-import org.gradle.internal.operations.BuildOperationContext;
-import org.gradle.internal.progress.BuildOperationExecutor;
 
 import java.net.URI;
 
@@ -33,15 +31,13 @@ import java.net.URI;
  * the classpath based on the initscript {} configuration closure.
  */
 public class DefaultInitScriptProcessor implements InitScriptProcessor {
-    private final ScriptPluginFactory configurerFactory;
+    private final ScriptPluginApplicator scriptPluginApplicator;
     private final ScriptHandlerFactory scriptHandlerFactory;
-    private final BuildOperationExecutor buildOperationExecutor;
     private final IdGenerator<Long> idGenerator = new LongIdGenerator();
 
-    public DefaultInitScriptProcessor(ScriptPluginFactory configurerFactory, ScriptHandlerFactory scriptHandlerFactory, BuildOperationExecutor buildOperationExecutor) {
-        this.configurerFactory = configurerFactory;
+    public DefaultInitScriptProcessor(ScriptPluginApplicator scriptPluginApplicator, ScriptHandlerFactory scriptHandlerFactory) {
+        this.scriptPluginApplicator = scriptPluginApplicator;
         this.scriptHandlerFactory = scriptHandlerFactory;
-        this.buildOperationExecutor = buildOperationExecutor;
     }
 
     public void process(ScriptSource initScript, final GradleInternal gradle) {
@@ -50,12 +46,6 @@ public class DefaultInitScriptProcessor implements InitScriptProcessor {
         String id = uri == null ? idGenerator.generateId().toString() : uri.toString();
         ClassLoaderScope scriptScope = baseScope.createChild("init-" + id);
         ScriptHandler scriptHandler = scriptHandlerFactory.create(initScript, scriptScope);
-        final ScriptPlugin configurer = configurerFactory.create(initScript, scriptHandler, scriptScope, baseScope, true);
-        buildOperationExecutor.run("Apply " + initScript.getDisplayName(), new Action<BuildOperationContext>() {
-            @Override
-            public void execute(BuildOperationContext buildOperationContext) {
-                configurer.apply(gradle);
-            }
-        });
+        scriptPluginApplicator.apply(initScript, scriptHandler, scriptScope, baseScope, true, gradle);
     }
 }

@@ -16,20 +16,16 @@
 
 package org.gradle.api.internal.plugins;
 
-import org.gradle.api.Action;
 import org.gradle.api.Plugin;
 import org.gradle.api.initialization.dsl.ScriptHandler;
+import org.gradle.api.internal.configuration.ScriptPluginApplicator;
 import org.gradle.api.internal.file.FileResolver;
 import org.gradle.api.internal.initialization.ClassLoaderScope;
 import org.gradle.api.internal.initialization.ScriptHandlerFactory;
 import org.gradle.api.plugins.ObjectConfigurationAction;
 import org.gradle.api.plugins.PluginAware;
-import org.gradle.configuration.ScriptPlugin;
-import org.gradle.configuration.ScriptPluginFactory;
 import org.gradle.groovy.scripts.ScriptSource;
 import org.gradle.groovy.scripts.UriScriptSource;
-import org.gradle.internal.operations.BuildOperationContext;
-import org.gradle.internal.progress.BuildOperationExecutor;
 import org.gradle.util.GUtil;
 
 import java.net.URI;
@@ -39,20 +35,18 @@ import java.util.Set;
 public class DefaultObjectConfigurationAction implements ObjectConfigurationAction {
 
     private final FileResolver resolver;
-    private final ScriptPluginFactory configurerFactory;
+    private final ScriptPluginApplicator scriptPluginApplicator;
     private final ScriptHandlerFactory scriptHandlerFactory;
     private final Set<Object> targets = new LinkedHashSet<Object>();
     private final Set<Runnable> actions = new LinkedHashSet<Runnable>();
     private final ClassLoaderScope classLoaderScope;
-    private final BuildOperationExecutor buildOperationExecutor;
     private final Object defaultTarget;
 
-    public DefaultObjectConfigurationAction(FileResolver resolver, ScriptPluginFactory configurerFactory, ScriptHandlerFactory scriptHandlerFactory, ClassLoaderScope classLoaderScope, BuildOperationExecutor buildOperationExecutor, Object defaultTarget) {
+    public DefaultObjectConfigurationAction(FileResolver resolver, ScriptPluginApplicator scriptPluginApplicator, ScriptHandlerFactory scriptHandlerFactory, ClassLoaderScope classLoaderScope, Object defaultTarget) {
         this.resolver = resolver;
-        this.configurerFactory = configurerFactory;
+        this.scriptPluginApplicator = scriptPluginApplicator;
         this.scriptHandlerFactory = scriptHandlerFactory;
         this.classLoaderScope = classLoaderScope;
-        this.buildOperationExecutor = buildOperationExecutor;
         this.defaultTarget = defaultTarget;
     }
 
@@ -102,15 +96,7 @@ public class DefaultObjectConfigurationAction implements ObjectConfigurationActi
         ScriptSource scriptSource = new UriScriptSource("script", scriptUri);
         ClassLoaderScope classLoaderScopeChild = classLoaderScope.createChild("script-" + scriptUri.toString());
         ScriptHandler scriptHandler = scriptHandlerFactory.create(scriptSource, classLoaderScopeChild);
-        final ScriptPlugin configurer = configurerFactory.create(scriptSource, scriptHandler, classLoaderScopeChild, classLoaderScope, false);
-        for (final Object target : targets) {
-            buildOperationExecutor.run("Apply " + scriptSource.getDisplayName() + " to " + target, new Action<BuildOperationContext>() {
-                @Override
-                public void execute(BuildOperationContext buildOperationContext) {
-                    configurer.apply(target);
-                }
-            });
-        }
+        scriptPluginApplicator.apply(scriptSource, scriptHandler, classLoaderScopeChild, classLoaderScope, false, targets);
     }
 
     private void applyPlugin(Class<? extends Plugin> pluginClass) {

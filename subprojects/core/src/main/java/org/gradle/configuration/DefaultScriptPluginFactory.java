@@ -21,6 +21,8 @@ import org.gradle.api.internal.DocumentationRegistry;
 import org.gradle.api.internal.GradleInternal;
 import org.gradle.api.internal.SettingsInternal;
 import org.gradle.api.internal.cache.StringInterner;
+import org.gradle.api.internal.configuration.DefaultScriptPluginApplicator;
+import org.gradle.api.internal.configuration.ScriptPluginApplicator;
 import org.gradle.api.internal.file.FileLookup;
 import org.gradle.api.internal.file.collections.DirectoryFileTreeFactory;
 import org.gradle.api.internal.initialization.ClassLoaderScope;
@@ -128,7 +130,7 @@ public class DefaultScriptPluginFactory implements ScriptPluginFactory {
                     return fileLookup.getFileResolver().getPatternSetFactory();
                 }
             };
-            services.add(ScriptPluginFactory.class, DefaultScriptPluginFactory.this);
+            services.add(ScriptPluginApplicator.class, new DefaultScriptPluginApplicator(DefaultScriptPluginFactory.this, buildOperationExecutor));
             services.add(ScriptHandlerFactory.class, scriptHandlerFactory);
             services.add(ClassLoaderScope.class, targetScope);
             services.add(LoggingManagerInternal.class, loggingManagerFactory.create());
@@ -139,7 +141,6 @@ public class DefaultScriptPluginFactory implements ScriptPluginFactory {
             services.add(ModelRuleSourceDetector.class, modelRuleSourceDetector);
             services.add(PluginRepositoryRegistry.class, pluginRepositoryRegistry);
             services.add(PluginRepositoryFactory.class, pluginRepositoryFactory);
-            services.add(BuildOperationExecutor.class, buildOperationExecutor);
 
             final ScriptTarget initialPassScriptTarget = initialPassTarget(target);
 

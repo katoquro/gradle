@@ -27,6 +27,7 @@ import org.gradle.api.file.DeleteSpec;
 import org.gradle.api.file.FileTree;
 import org.gradle.api.initialization.dsl.ScriptHandler;
 import org.gradle.api.internal.ProcessOperations;
+import org.gradle.api.internal.configuration.ScriptPluginApplicator;
 import org.gradle.api.internal.file.DefaultFileOperations;
 import org.gradle.api.internal.file.FileLookup;
 import org.gradle.api.internal.file.FileOperations;
@@ -40,9 +41,7 @@ import org.gradle.api.logging.Logging;
 import org.gradle.api.logging.LoggingManager;
 import org.gradle.api.resources.ResourceHandler;
 import org.gradle.api.tasks.WorkResult;
-import org.gradle.configuration.ScriptPluginFactory;
 import org.gradle.internal.Actions;
-import org.gradle.internal.progress.BuildOperationExecutor;
 import org.gradle.internal.reflect.Instantiator;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.process.ExecResult;
@@ -60,7 +59,6 @@ public abstract class DefaultScript extends BasicScript {
     private FileOperations fileOperations;
     private ProcessOperations processOperations;
     private LoggingManager loggingManager;
-    private BuildOperationExecutor buildOperationExecutor;
 
     public ServiceRegistry __scriptServices;
 
@@ -69,7 +67,6 @@ public abstract class DefaultScript extends BasicScript {
         super.init(target, services);
         this.__scriptServices = services;
         loggingManager = services.get(LoggingManager.class);
-        buildOperationExecutor = services.get(BuildOperationExecutor.class);
         Instantiator instantiator = services.get(Instantiator.class);
         FileLookup fileLookup = services.get(FileLookup.class);
         DirectoryFileTreeFactory directoryFileTreeFactory = services.get(DirectoryFileTreeFactory.class);
@@ -96,10 +93,9 @@ public abstract class DefaultScript extends BasicScript {
         ClassLoaderScope classLoaderScope = __scriptServices.get(ClassLoaderScope.class);
         return new DefaultObjectConfigurationAction(
             getFileResolver(),
-            __scriptServices.get(ScriptPluginFactory.class),
+            __scriptServices.get(ScriptPluginApplicator.class),
             __scriptServices.get(ScriptHandlerFactory.class),
             classLoaderScope,
-            buildOperationExecutor,
             getScriptTarget()
         );
     }

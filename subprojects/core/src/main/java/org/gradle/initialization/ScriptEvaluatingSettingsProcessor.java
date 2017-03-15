@@ -17,17 +17,13 @@
 package org.gradle.initialization;
 
 import org.gradle.StartParameter;
-import org.gradle.api.Action;
 import org.gradle.api.initialization.dsl.ScriptHandler;
 import org.gradle.api.internal.GradleInternal;
 import org.gradle.api.internal.SettingsInternal;
+import org.gradle.api.internal.configuration.ScriptPluginApplicator;
 import org.gradle.api.internal.initialization.ClassLoaderScope;
 import org.gradle.api.internal.initialization.ScriptHandlerFactory;
-import org.gradle.configuration.ScriptPlugin;
-import org.gradle.configuration.ScriptPluginFactory;
 import org.gradle.groovy.scripts.ScriptSource;
-import org.gradle.internal.operations.BuildOperationContext;
-import org.gradle.internal.progress.BuildOperationExecutor;
 import org.gradle.internal.time.Timer;
 import org.gradle.internal.time.Timers;
 import org.slf4j.Logger;
@@ -43,19 +39,16 @@ public class ScriptEvaluatingSettingsProcessor implements SettingsProcessor {
     private final ScriptHandlerFactory scriptHandlerFactory;
     private final SettingsFactory settingsFactory;
     private final IGradlePropertiesLoader propertiesLoader;
-    private final ScriptPluginFactory configurerFactory;
-    private final BuildOperationExecutor buildOperationExecutor;
+    private final ScriptPluginApplicator scriptPluginApplicator;
 
-    public ScriptEvaluatingSettingsProcessor(ScriptPluginFactory configurerFactory,
+    public ScriptEvaluatingSettingsProcessor(ScriptPluginApplicator scriptPluginApplicator,
                                              ScriptHandlerFactory scriptHandlerFactory,
                                              SettingsFactory settingsFactory,
-                                             IGradlePropertiesLoader propertiesLoader,
-                                             BuildOperationExecutor buildOperationExecutor) {
-        this.configurerFactory = configurerFactory;
+                                             IGradlePropertiesLoader propertiesLoader) {
+        this.scriptPluginApplicator = scriptPluginApplicator;
         this.scriptHandlerFactory = scriptHandlerFactory;
         this.settingsFactory = settingsFactory;
         this.propertiesLoader = propertiesLoader;
-        this.buildOperationExecutor = buildOperationExecutor;
     }
 
     public SettingsInternal process(GradleInternal gradle,
@@ -75,12 +68,6 @@ public class ScriptEvaluatingSettingsProcessor implements SettingsProcessor {
         ScriptSource settingsScriptSource = settingsLocation.getSettingsScriptSource();
         ClassLoaderScope settingsClassLoaderScope = settings.getClassLoaderScope();
         ScriptHandler scriptHandler = scriptHandlerFactory.create(settingsScriptSource, settingsClassLoaderScope);
-        final ScriptPlugin configurer = configurerFactory.create(settingsScriptSource, scriptHandler, settingsClassLoaderScope, settings.getRootClassLoaderScope(), true);
-        buildOperationExecutor.run("Apply " + settingsScriptSource.getDisplayName(), new Action<BuildOperationContext>() {
-            @Override
-            public void execute(BuildOperationContext buildOperationContext) {
-                configurer.apply(settings);
-            }
-        });
+        scriptPluginApplicator.apply(settingsScriptSource, scriptHandler, settingsClassLoaderScope, settings.getRootClassLoaderScope(), true, settings);
     }
 }

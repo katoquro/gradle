@@ -15,12 +15,8 @@
  */
 package org.gradle.configuration.project;
 
-import org.gradle.api.Action;
+import org.gradle.api.internal.configuration.ScriptPluginApplicator;
 import org.gradle.api.internal.project.ProjectInternal;
-import org.gradle.configuration.ScriptPlugin;
-import org.gradle.configuration.ScriptPluginFactory;
-import org.gradle.internal.operations.BuildOperationContext;
-import org.gradle.internal.progress.BuildOperationExecutor;
 import org.gradle.internal.time.Timer;
 import org.gradle.internal.time.Timers;
 import org.slf4j.Logger;
@@ -28,25 +24,17 @@ import org.slf4j.LoggerFactory;
 
 public class BuildScriptProcessor implements ProjectConfigureAction {
     private static final Logger LOGGER = LoggerFactory.getLogger(BuildScriptProcessor.class);
-    private final ScriptPluginFactory configurerFactory;
-    private final BuildOperationExecutor buildOperationExecutor;
+    private final ScriptPluginApplicator scriptPluginApplicator;
 
-    public BuildScriptProcessor(ScriptPluginFactory configurerFactory, BuildOperationExecutor buildOperationExecutor) {
-        this.configurerFactory = configurerFactory;
-        this.buildOperationExecutor = buildOperationExecutor;
+    public BuildScriptProcessor(ScriptPluginApplicator scriptPluginApplicator) {
+        this.scriptPluginApplicator = scriptPluginApplicator;
     }
 
     public void execute(final ProjectInternal project) {
         LOGGER.info("Evaluating {} using {}.", project, project.getBuildScriptSource().getDisplayName());
         Timer clock = Timers.startTimer();
         try {
-            final ScriptPlugin configurer = configurerFactory.create(project.getBuildScriptSource(), project.getBuildscript(), project.getClassLoaderScope(), project.getBaseClassLoaderScope(), true);
-            buildOperationExecutor.run("Apply " + project + " build script", new Action<BuildOperationContext>() {
-                @Override
-                public void execute(BuildOperationContext buildOperationContext) {
-                    configurer.apply(project);
-                }
-            });
+            scriptPluginApplicator.apply(project.getBuildScriptSource(), project.getBuildscript(), project.getClassLoaderScope(), project.getBaseClassLoaderScope(), true, project);
         } finally {
             LOGGER.debug("Timing: Running the build script took {}", clock.getElapsed());
         }

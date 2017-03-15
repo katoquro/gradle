@@ -25,6 +25,7 @@ import org.gradle.api.initialization.ProjectDescriptor;
 import org.gradle.api.initialization.Settings;
 import org.gradle.api.internal.GradleInternal;
 import org.gradle.api.internal.SettingsInternal;
+import org.gradle.api.internal.configuration.ScriptPluginApplicator;
 import org.gradle.api.internal.file.FileResolver;
 import org.gradle.api.internal.initialization.ClassLoaderScope;
 import org.gradle.api.internal.initialization.ScriptHandlerFactory;
@@ -33,11 +34,9 @@ import org.gradle.api.internal.plugins.PluginManagerInternal;
 import org.gradle.api.internal.project.AbstractPluginAware;
 import org.gradle.api.internal.project.ProjectRegistry;
 import org.gradle.caching.configuration.BuildCacheConfiguration;
-import org.gradle.configuration.ScriptPluginFactory;
 import org.gradle.groovy.scripts.ScriptSource;
 import org.gradle.internal.Actions;
 import org.gradle.internal.Cast;
-import org.gradle.internal.progress.BuildOperationExecutor;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.internal.service.scopes.ServiceRegistryFactory;
 import org.gradle.plugin.management.PluginManagementSpec;
@@ -207,10 +206,9 @@ public class DefaultSettings extends AbstractPluginAware implements SettingsInte
     protected DefaultObjectConfigurationAction createObjectConfigurationAction() {
         return new DefaultObjectConfigurationAction(
             getFileResolver(),
-            getScriptPluginFactory(),
+            getScriptPluginApplicator(),
             getScriptHandlerFactory(),
             getRootClassLoaderScope(),
-            getServices().get(BuildOperationExecutor.class),
             this);
     }
 
@@ -232,7 +230,7 @@ public class DefaultSettings extends AbstractPluginAware implements SettingsInte
     }
 
     @Inject
-    protected ScriptPluginFactory getScriptPluginFactory() {
+    protected ScriptPluginApplicator getScriptPluginApplicator() {
         throw new UnsupportedOperationException();
     }
 
